@@ -47,8 +47,15 @@
         [floatingButton setImage:icon forState:UIControlStateNormal];
         floatingButton.tintColor = [UIColor whiteColor];
 
+        // 1. 单击事件：保持原版设计（静默切换防挂起状态 + 缩放动画）
         [floatingButton addTarget:self action:@selector(buttonTapped:) forControlEvents:UIControlEventTouchUpInside];
         
+        // 2. 长按事件：新增功能（长按 0.6 秒唤出时间段控制说明与配置提示）
+        UILongPressGestureRecognizer *longPressGesture = [[UILongPressGestureRecognizer alloc] initWithTarget:self action:@selector(handleLongPress:)];
+        longPressGesture.minimumPressDuration = 0.6;
+        [floatingButton addGestureRecognizer:longPressGesture];
+
+        // 3. 拖动手势：保持原版拖动与边缘回弹
         UIPanGestureRecognizer *panGesture = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
         [floatingButton addGestureRecognizer:panGesture];
 
@@ -57,6 +64,7 @@
     return self;
 }
 
+// 拖动悬浮窗逻辑
 - (void)handlePan:(UIPanGestureRecognizer *)gesture {
     CGPoint translation = [gesture translationInView:self];
     UIView *button = gesture.view;
@@ -81,6 +89,7 @@
     }
 }
 
+// 单击：原版切换开关 + 缩放动画
 - (void)buttonTapped:(id)sender {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     BOOL currentState = [defaults boolForKey:@"immortalized"];
@@ -96,6 +105,38 @@
             self->floatingButton.transform = CGAffineTransformIdentity;
         }];
     }];
+}
+
+// 长按：唤出时间控制模块说明面板
+- (void)handleLongPress:(UILongPressGestureRecognizer *)gesture {
+    if (gesture.state == UIGestureRecognizerStateBegan) {
+        UIImpactFeedbackGenerator *generator = [[UIImpactFeedbackGenerator alloc] initWithStyle:UIImpactFeedbackStyleMedium];
+        [generator impactOccurred];
+
+        UIViewController *rootVC = self.rootViewController;
+        if (!rootVC) {
+            UIWindow *keyWindow = nil;
+            for (UIWindow *window in [UIApplication sharedApplication].windows) {
+                if (window.isKeyWindow) {
+                    keyWindow = window;
+                    break;
+                }
+            }
+            rootVC = keyWindow.rootViewController;
+        }
+
+        NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+        BOOL isEnabled = [defaults boolForKey:@"immortalized"];
+        
+        NSString *msg = [NSString stringWithFormat:@"当前防挂起总开关: %@\n\n⏰ 智能时间控制规则:\n每日 22:00 至次日 05:20 自动放行/恢复系统默认挂起。", isEnabled ? @"已开启" : @"已关闭"];
+
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Immortalizer 时间控制" 
+                                                                   message:msg 
+                                                            preferredStyle:UIAlertControllerStyleAlert];
+        
+        [alert addAction:[UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDefault handler:nil]];
+        [rootVC presentViewController:alert animated:YES completion:nil];
+    }
 }
 
 - (void)showButton {
