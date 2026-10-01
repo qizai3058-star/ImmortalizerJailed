@@ -38,21 +38,17 @@
         self.backgroundColor = [UIColor clearColor];
         self.hidden = YES;
 
-        // 恢复悬浮按钮
         floatingButton = [UIButton buttonWithType:UIButtonTypeCustom];
-        floatingButton.frame = CGRectMake(100, 100, 60, 60);
-        floatingButton.layer.cornerRadius = 30;
-        floatingButton.backgroundColor = [UIColor colorWithWhite:0.1 alpha:0.8];
+        floatingButton.frame = CGRectMake(100, 100, 50, 50);
+        floatingButton.layer.cornerRadius = 25;
+        floatingButton.backgroundColor = [UIColor colorWithWhite:0.1 alpha:0.6];
         
-        // 设置沙漏图标和颜色
         UIImage *icon = [UIImage systemImageNamed:@"hourglass"];
         [floatingButton setImage:icon forState:UIControlStateNormal];
-        floatingButton.tintColor = [UIColor systemRedColor];
+        floatingButton.tintColor = [UIColor whiteColor];
 
-        // 点击悬浮球触发操作面板
         [floatingButton addTarget:self action:@selector(buttonTapped:) forControlEvents:UIControlEventTouchUpInside];
         
-        // 添加拖动手势
         UIPanGestureRecognizer *panGesture = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
         [floatingButton addGestureRecognizer:panGesture];
 
@@ -61,7 +57,6 @@
     return self;
 }
 
-// 拖动悬浮窗逻辑
 - (void)handlePan:(UIPanGestureRecognizer *)gesture {
     CGPoint translation = [gesture translationInView:self];
     UIView *button = gesture.view;
@@ -73,12 +68,12 @@
     } else if (gesture.state == UIGestureRecognizerStateEnded) {
         CGRect screenRect = [UIScreen mainScreen].bounds;
         CGPoint center = button.center;
-        CGFloat margin = 35;
+        CGFloat margin = 30;
         
         if (center.x < margin) center.x = margin;
         if (center.x > screenRect.size.width - margin) center.x = screenRect.size.width - margin;
-        if (center.y < margin + 40) center.y = margin + 40;
-        if (center.y > screenRect.size.height - margin - 40) center.y = screenRect.size.height - margin - 40;
+        if (center.y < margin + 30) center.y = margin + 30;
+        if (center.y > screenRect.size.height - margin - 30) center.y = screenRect.size.height - margin - 30;
         
         [UIView animateWithDuration:0.3 animations:^{
             button.center = center;
@@ -86,37 +81,21 @@
     }
 }
 
-// 点击悬浮球时弹出操作面板
 - (void)buttonTapped:(id)sender {
-    UIViewController *rootVC = self.rootViewController;
-    if (!rootVC) {
-        UIWindow *keyWindow = nil;
-        for (UIWindow *window in [UIApplication sharedApplication].windows) {
-            if (window.isKeyWindow) {
-                keyWindow = window;
-                break;
-            }
-        }
-        rootVC = keyWindow.rootViewController;
-    }
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    BOOL currentState = [defaults boolForKey:@"immortalized"];
+    [defaults setBool:!currentState forKey:@"immortalized"];
+    [defaults synchronize];
     
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Immortalizer 控制面板" 
-                                                               message:@"请选择操作" 
-                                                        preferredStyle:UIAlertControllerStyleAlert];
+    CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFSTR("com.sergy.immortalizerjailed.updateprefs"), NULL, NULL, YES);
     
-    // 切换防挂起开启/关闭状态
-    [alert addAction:[UIAlertAction actionWithTitle:@"切换防挂起状态" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
-        NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-        BOOL currentState = [defaults boolForKey:@"immortalized"];
-        [defaults setBool:!currentState forKey:@"immortalized"];
-        [defaults synchronize];
-        
-        CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(), CFSTR("com.sergy.immortalizerjailed.updateprefs"), NULL, NULL, YES);
-    }]];
-    
-    [alert addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
-    
-    [rootVC presentViewController:alert animated:YES completion:nil];
+    [UIView animateWithDuration:0.1 animations:^{
+        self->floatingButton.transform = CGAffineTransformMakeScale(0.8, 0.8);
+    } completion:^(BOOL finished) {
+        [UIView animateWithDuration:0.1 animations:^{
+            self->floatingButton.transform = CGAffineTransformIdentity;
+        }];
+    }];
 }
 
 - (void)showButton {
@@ -127,7 +106,6 @@
     self.hidden = YES;
 }
 
-// 触摸穿透
 - (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event {
     CGPoint buttonPoint = [self convertPoint:point toView:floatingButton];
     if ([floatingButton pointInside:buttonPoint withEvent:event]) {
