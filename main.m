@@ -28,7 +28,7 @@ static void prefsChanged() {
     isImmortalized = [[NSUserDefaults standardUserDefaults] boolForKey:@"immortalized"];
 }
 
-// MARK: - Time Range Control Logic (新增的时间段判断函数)
+// 时间段判断逻辑：检查当前时间是否在指定范围内（默认 22:00 到次日 05:20）
 static BOOL isCurrentTimeInRange(NSInteger startHour, NSInteger startMin, NSInteger endHour, NSInteger endMin) {
     NSCalendar *calendar = [NSCalendar currentCalendar];
     NSDateComponents *components = [calendar components:(NSCalendarUnitHour | NSCalendarUnitMinute) fromDate:[NSDate date]];
@@ -53,21 +53,17 @@ void new_sceneID_updateWithSettingsDiff_transitionContext_completion(id self, SE
         return original_sceneID_updateWithSettingsDiff_transitionContext_completion(self, _cmd, arg1, arg2, arg3, arg4);
     }
 
-    // --- 新增：时间段控制逻辑（如果在设定时间段内，自动放行不拦截） ---
-    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    BOOL timeControlEnabled = [defaults boolForKey:@"TimeControlEnabled"];
-    
-    if (timeControlEnabled) {
-        NSInteger startH = [defaults integerForKey:@"StartHour"] ?: 22; // 默认晚上 22 点
-        NSInteger startM = [defaults integerForKey:@"StartMinute"] ?: 0;
-        NSInteger endH = [defaults integerForKey:@"EndHour"] ?: 5;       // 默认清晨 5 点
-        NSInteger endM = [defaults integerForKey:@"EndMinute"] ?: 20;     // 默认 20 分
+    // --- 时间段控制：如果在设定时间段内（默认 22:00 ~ 05:20），则自动不拦截，恢复系统默认挂起 ---
+    // 如需修改时间或关闭该功能，可调整下方数值
+    NSInteger startH = 22; 
+    NSInteger startM = 0;
+    NSInteger endH = 5;       
+    NSInteger endM = 20;     
         
-        if (isCurrentTimeInRange(startH, startM, endH, endM)) {
-            return original_sceneID_updateWithSettingsDiff_transitionContext_completion(self, _cmd, arg1, arg2, arg3, arg4);
-        }
+    if (isCurrentTimeInRange(startH, startM, endH, endM)) {
+        return original_sceneID_updateWithSettingsDiff_transitionContext_completion(self, _cmd, arg1, arg2, arg3, arg4);
     }
-    // -------------------------------------------------------------
+    -----------------------------------------------------------------------------------------
 
     NSString *diffDescription = [arg2 description];
 
@@ -161,7 +157,7 @@ static void setup() {
         Class unCenterClass = objc_getClass("UNUserNotificationCenter");
         Method setDelegateMethod = class_getInstanceMethod(unCenterClass, @selector(setDelegate:));
         if (setDelegateMethod) {
-            orig_setDelegate = (void *)method_getImplementation(setDelegateMethod);
+            orig_orig_setDelegate = (void *)method_getImplementation(setDelegateMethod);
             method_setImplementation(setDelegateMethod, (IMP)hook_setDelegate);
         }
 
