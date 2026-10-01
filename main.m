@@ -28,6 +28,24 @@ static void prefsChanged() {
     isImmortalized = [[NSUserDefaults standardUserDefaults] boolForKey:@"immortalized"];
 }
 
+// MARK: - Time Range Control Logic
+// 判断当前时间是否在指定时间段内（支持跨天，例如 22:00 到次日 05:20）
+static BOOL isCurrentTimeInRange(NSInteger startHour, NSInteger startMin, NSInteger endHour, NSInteger endMin) {
+    NSCalendar *calendar = [NSCalendar currentCalendar];
+    NSDateComponents *components = [calendar components:(NSCalendarUnitHour | NSCalendarUnitMinute) fromDate:[NSDate date]];
+    
+    NSInteger currentMinutes = components.hour * 60 + components.minute;
+    NSInteger startMinutes = startHour * 60 + startMin;
+    NSInteger endMinutes = endHour * 60 + endMin;
+    
+    if (startMinutes <= endMinutes) {
+        return (currentMinutes >= startMinutes && currentMinutes <= endMinutes);
+    } else {
+        // 跨天情况处理（例如夜间到清晨）
+        return (currentMinutes >= startMinutes || currentMinutes <= endMinutes);
+    }
+}
+
 static void (*original_sceneID_updateWithSettingsDiff_transitionContext_completion)(id, SEL, id, id, id, id);
 
 /* thanks to @khanhduytran0 for this wonderful hook. goat */
@@ -35,6 +53,24 @@ void new_sceneID_updateWithSettingsDiff_transitionContext_completion(id self, SE
     if (!isImmortalized) {
         return original_sceneID_updateWithSettingsDiff_transitionContext_completion(self, _cmd, arg1, arg2, arg3, arg4);
     }
+
+    // --- 新增：时间段控制校验 ---
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    BOOL timeControlEnabled = [defaults boolForKey:@"TimeControlEnabled"]; // 是否开启时间段控制
+    
+    if (timeControlEnabled) {
+        // 读取配置的时间（默认 22:00 到 05:20，可后期通过偏好设置修改）
+        NSInteger startH = [defaults integerForKey:@"StartHour"] ?: 22;
+        NSInteger startM = [defaults integerForKey:@"StartMinute"] ?: 0;
+        NSInteger endH = [defaults integerForKey:@"EndHour"] ?: 5;
+        NSInteger endM = [defaults integerForKey:@"EndMinute"] ?: 20;
+        
+        // 如果当前时间处于设定的限制时间段内，则直接放行（不进行常驻拦截，相当于自动失效）
+        if (isCurrentTimeInRange(startH, startM, endH, endM)) {
+            return original_sceneID_updateWithSettingsDiff_transitionContext_completion(self, _cmd, arg1, arg2, arg3, arg4);
+        }
+    }
+    // ---------------------------
 
     NSString *diffDescription = [arg2 description];
 
