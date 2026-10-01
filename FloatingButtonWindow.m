@@ -5,6 +5,14 @@
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
     (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>. 
 */
 
 #import "FloatingButtonWindow.h"
@@ -36,15 +44,15 @@
         floatingButton.layer.cornerRadius = 30;
         floatingButton.backgroundColor = [UIColor colorWithWhite:0.1 alpha:0.8];
         
-        // 设置沙漏图标
+        // 设置沙漏图标和颜色
         UIImage *icon = [UIImage systemImageNamed:@"hourglass"];
         [floatingButton setImage:icon forState:UIControlStateNormal];
-        [floatingButton tintColor:[UIColor systemRedColor]];
+        floatingButton.tintColor = [UIColor systemRedColor];
 
         // 点击悬浮球触发操作面板
         [floatingButton addTarget:self action:@selector(buttonTapped:) forControlEvents:UIControlEventTouchUpInside];
         
-        // 添加拖动手势（可以随意拖动悬浮球位置）
+        // 添加拖动手势
         UIPanGestureRecognizer *panGesture = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
         [floatingButton addGestureRecognizer:panGesture];
 
@@ -82,7 +90,14 @@
 - (void)buttonTapped:(id)sender {
     UIViewController *rootVC = self.rootViewController;
     if (!rootVC) {
-        rootVC = [UIApplication sharedApplication].keyWindow.rootViewController;
+        UIWindow *keyWindow = nil;
+        for (UIWindow *window in [UIApplication sharedApplication].windows) {
+            if (window.isKeyWindow) {
+                keyWindow = window;
+                break;
+            }
+        }
+        rootVC = keyWindow.rootViewController;
     }
     
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Immortalizer 控制面板" 
@@ -112,7 +127,7 @@
     self.hidden = YES;
 }
 
-// 触摸穿透：只有点在悬浮球上时才响应，其余空白地方不影响点 App
+// 触摸穿透
 - (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event {
     CGPoint buttonPoint = [self convertPoint:point toView:floatingButton];
     if ([floatingButton pointInside:buttonPoint withEvent:event]) {
