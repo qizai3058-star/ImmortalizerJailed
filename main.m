@@ -28,8 +28,7 @@ static void prefsChanged() {
     isImmortalized = [[NSUserDefaults standardUserDefaults] boolForKey:@"immortalized"];
 }
 
-// MARK: - Time Range Control Logic
-// 判断当前时间是否在指定时间段内（支持跨天，例如 22:00 到次日 05:20）
+// MARK: - Time Range Control Logic (新增的时间段判断函数)
 static BOOL isCurrentTimeInRange(NSInteger startHour, NSInteger startMin, NSInteger endHour, NSInteger endMin) {
     NSCalendar *calendar = [NSCalendar currentCalendar];
     NSDateComponents *components = [calendar components:(NSCalendarUnitHour | NSCalendarUnitMinute) fromDate:[NSDate date]];
@@ -41,7 +40,7 @@ static BOOL isCurrentTimeInRange(NSInteger startHour, NSInteger startMin, NSInte
     if (startMinutes <= endMinutes) {
         return (currentMinutes >= startMinutes && currentMinutes <= endMinutes);
     } else {
-        // 跨天情况处理（例如夜间到清晨）
+        // 跨天情况（例如 22:00 到次日 05:20）
         return (currentMinutes >= startMinutes || currentMinutes <= endMinutes);
     }
 }
@@ -54,23 +53,21 @@ void new_sceneID_updateWithSettingsDiff_transitionContext_completion(id self, SE
         return original_sceneID_updateWithSettingsDiff_transitionContext_completion(self, _cmd, arg1, arg2, arg3, arg4);
     }
 
-    // --- 新增：时间段控制校验 ---
+    // --- 新增：时间段控制逻辑（如果在设定时间段内，自动放行不拦截） ---
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-    BOOL timeControlEnabled = [defaults boolForKey:@"TimeControlEnabled"]; // 是否开启时间段控制
+    BOOL timeControlEnabled = [defaults boolForKey:@"TimeControlEnabled"];
     
     if (timeControlEnabled) {
-        // 读取配置的时间（默认 22:00 到 05:20，可后期通过偏好设置修改）
-        NSInteger startH = [defaults integerForKey:@"StartHour"] ?: 22;
+        NSInteger startH = [defaults integerForKey:@"StartHour"] ?: 22; // 默认晚上 22 点
         NSInteger startM = [defaults integerForKey:@"StartMinute"] ?: 0;
-        NSInteger endH = [defaults integerForKey:@"EndHour"] ?: 5;
-        NSInteger endM = [defaults integerForKey:@"EndMinute"] ?: 20;
+        NSInteger endH = [defaults integerForKey:@"EndHour"] ?: 5;       // 默认清晨 5 点
+        NSInteger endM = [defaults integerForKey:@"EndMinute"] ?: 20;     // 默认 20 分
         
-        // 如果当前时间处于设定的限制时间段内，则直接放行（不进行常驻拦截，相当于自动失效）
         if (isCurrentTimeInRange(startH, startM, endH, endM)) {
             return original_sceneID_updateWithSettingsDiff_transitionContext_completion(self, _cmd, arg1, arg2, arg3, arg4);
         }
     }
-    // ---------------------------
+    // -------------------------------------------------------------
 
     NSString *diffDescription = [arg2 description];
 
